@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mcgit v1.0.0 - Minecraft 快捷栏存档管理工具</title>
+    <link rel="icon"
+          href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>&gt;_&lt;/text></svg>">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+        }
+
+        body {
+            background-color: #0a0a0a;
+            color: #00ff00;
+            line-height: 1.6;
+            min-height: 100vh;
+            padding: 20px;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* 扫描线效果 */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                    to bottom,
+                    transparent 50%,
+                    rgba(0, 255, 0, 0.03) 50%
+            );
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 1000;
+            animation: scanline 10s linear infinite;
+        }
+
+        @keyframes scanline {
+            0% {
+                transform: translateY(0);
+            }
+            100% {
+                transform: translateY(4px);
+            }
+        }
+
+        /* 闪烁光标 */
+        .cursor {
+            display: inline-block;
+            width: 10px;
+            height: 20px;
+            background-color: #00ff00;
+            vertical-align: middle;
+            margin-left: 5px;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 50% {
+                opacity: 1;
+            }
+            51%, 100% {
+                opacity: 0;
+            }
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            border: 1px solid #00ff00;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+            padding: 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header {
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 1px dashed #00ff00;
+            margin-bottom: 30px;
+        }
+
+        .version-badge {
+            background-color: #003300;
+            color: #00ff00;
+            padding: 5px 15px;
+            border-radius: 0;
+            border: 1px solid #00ff00;
+            display: inline-block;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+
+        h1 {
+            color: #00ff00;
+            font-size: 2.5rem;
+            text-shadow: 0 0 10px rgba(0, 255, 0, 0.7);
+            margin-bottom: 10px;
+        }
+
+        h2 {
+            color: #00cc00;
+            font-size: 1.8rem;
+            margin: 25px 0 15px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #005500;
+        }
+
+        h3 {
+            color: #00aa00;
+            font-size: 1.4rem;
+            margin: 20px 0 10px;
+        }
+
+        p {
+            margin-bottom: 15px;
+            color: #88ff88;
+        }
+
+        a {
+            color: #00ffff;
+            text-decoration: none;
+            border-bottom: 1px dotted #00ffff;
+            transition: all 0.3s;
+        }
+
+        a:hover {
+            color: #ffffff;
+            background-color: #005500;
+            text-shadow: 0 0 5px #00ff00;
+        }
+
+        .links {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+
+        .link-btn {
+            background-color: #001100;
+            padding: 10px 20px;
+            border: 1px solid #00ff00;
+            color: #00ff00;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .link-btn:hover {
+            background-color: #003300;
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+        }
+
+        .code-block {
+            background-color: #001100;
+            border: 1px solid #005500;
+            padding: 15px;
+            margin: 15px 0;
+            overflow-x: auto;
+            color: #aaffaa;
+        }
+
+        .code-block pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            border: 1px solid #005500;
+        }
+
+        th, td {
+            border: 1px solid #005500;
+            padding: 12px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #002200;
+            color: #00ff00;
+        }
+
+        tr:nth-child(even) {
+            background-color: #001100;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .feature-card {
+            background-color: #001100;
+            border: 1px solid #005500;
+            padding: 15px;
+            transition: all 0.3s;
+        }
+
+        .feature-card:hover {
+            border-color: #00ff00;
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.2);
+        }
+
+        .warning {
+            background-color: #330000;
+            border-left: 4px solid #ff0000;
+            padding: 15px;
+            margin: 20px 0;
+            color: #ff8888;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px dashed #005500;
+            color: #008800;
+            font-size: 0.9rem;
+        }
+
+        .terminal-line {
+            margin-bottom: 10px;
+        }
+
+        .prompt {
+            color: #00ff00;
+        }
+
+        .command {
+            color: #ffffff;
+        }
+
+        .comment {
+            color: #008800;
+            font-style: italic;
+        }
+
+        /* 响应式调整 */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 1.8rem;
+            }
+
+            h2 {
+                font-size: 1.4rem;
+            }
+
+            .container {
+                padding: 10px;
+            }
+
+            .feature-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>&gt; Mcgit.exe<span class="cursor"></span></h1>
+        <div class="version-badge">v1.0.0</div>
+        <p>Minecraft 快捷栏存档管理工具</p>
+
+        <div class="links">
+            <!-- 可根据实际仓库地址补充 -->
+            <a href="https://github.com/FeSo4a/Minecraft-Git" target="_blank" class="link-btn">GitHub仓库</a>
+            <a href="https://space.bilibili.com/3546674548967510" target="_blank" class="link-btn">Bilibili主页</a>
+        </div>
+    </div>
+
+    <div class="terminal-line">
+        <span class="prompt">C:\&gt;</span>
+        <span class="command">mcgit -h</span>
+    </div>
+
+    <h2>&gt; 项目简介</h2>
+    <p>Mcgit 是一个专为 Minecraft 玩家设计的命令行工具，用于便捷地管理和备份你的物品栏（Hotbar）配置文件。</p>
+
+    <h2>&gt; 功能特性</h2>
+    <div class="feature-grid">
+        <div class="feature-card">
+            <h3>自动记录配置</h3>
+            <p>首次设置好游戏路径、存档路径和版本号后，程序会自动记录。后续操作时只需输入简单的指令（如 -hb），无需重复输入冗长的路径参数。</p>
+        </div>
+        <div class="feature-card">
+            <h3>便捷的备份与恢复</h3>
+            <p>支持一键备份当前版本的 hotbar 文件，或快速恢复到之前的存档状态。</p>
+        </div>
+        <div class="feature-card">
+            <h3>跨平台支持</h3>
+            <p>原生 Python 开发，提供 Windows 下打包好的 .exe 可执行文件，开箱即用。</p>
+        </div>
+    </div>
+
+    <h2>&gt; 技术栈</h2>
+    <div class="code-block">
+        <pre>
+Python 3.13
+argparse (命令行参数解析)
+os (操作系统路径交互)
+        </pre>
+    </div>
+
+    <h2>&gt; 安装与运行</h2>
+    <h3>1. 下载发行版</h3>
+    <p>前往 Releases 页面下载最新版本的 Mcgit v1.0.0 打包文件（.exe）。</p>
+    <h3>2. 运行方式</h3>
+    <div class="code-block">
+        <pre>
+mcgit [选项]
+        </pre>
+    </div>
+
+    <h2>&gt; 使用指南</h2>
+    <h3>首次配置</h3>
+    <p>在首次使用时，你需要通过参数指定游戏目录和存档目录：</p>
+    <div class="code-block">
+        <pre>
+:: 设置游戏版本、游戏路径和保存路径
+mcgit -v 1.20.1 -g "C:\Users\YourName\AppData\Roaming\.minecraft" -s "D:\MC_Saves\Hotbars"
+
+:: 或者使用长参数名
+mcgit --version 1.20.1 --gamepath "C:\..." --setpath "D:\..."
+        </pre>
+    </div>
+    <p>配置完成后，这些信息会被程序自动保存，下次无需再次输入。</p>
+
+    <h3>备份与恢复</h3>
+    <p>配置完成后，日常操作变得极其简单：</p>
+    <div class="code-block">
+        <pre>
+:: 备份当前版本的 hotbar 文件
+mcgit -hb
+
+:: 恢复当前版本的 hotbar 文件
+mcgit -hs
+        </pre>
+    </div>
+
+    <h3>高级操作（手动指定路径）</h3>
+    <p>如果你需要临时操作其他路径的文件，依然支持直接传入路径参数：</p>
+    <div class="code-block">
+        <pre>
+:: 将指定文件夹下的 hotbar 文件转移到当前设置的 .minecraft 目录下
+mcgit -c "D:\OtherSaves\Backup1"
+
+:: 将当前备份恢复到指定的 .minecraft 目录下
+mcgit -r "D:\OtherMinecraft\.minecraft"
+        </pre>
+    </div>
+
+    <h2>&gt; 完整参数列表</h2>
+    <table>
+        <tr>
+            <th>短参数</th>
+            <th>长参数</th>
+            <th>说明</th>
+            <th>示例</th>
+        </tr>
+        <tr>
+            <td><code>-h</code></td>
+            <td><code>--help</code></td>
+            <td>显示帮助信息并退出</td>
+            <td><code>mcgit -h</code></td>
+        </tr>
+        <tr>
+            <td><code>-v</code></td>
+            <td><code>--version</code></td>
+            <td><strong>设置</strong>当前游戏版本号</td>
+            <td><code>mcgit -v 1.20.1</code></td>
+        </tr>
+        <tr>
+            <td><code>-g</code></td>
+            <td><code>--gamepath</code></td>
+            <td><strong>设置</strong> <code>.minecraft</code> 文件夹路径</td>
+            <td><code>mcgit -g "C:\..."</code></td>
+        </tr>
+        <tr>
+            <td><code>-s</code></td>
+            <td><code>--setpath</code></td>
+            <td><strong>设置</strong>保存文件（备份）的路径</td>
+            <td><code>mcgit -s "D:\..."</code></td>
+        </tr>
+        <tr>
+            <td><code>-sh</code></td>
+            <td><code>--showhotbar</code></td>
+            <td><strong>显示</strong>保存文件的路径</td>
+            <td><code>mcgit -sh</code></td>
+        </tr>
+        <tr>
+            <td><code>-sp</code></td>
+            <td><code>--showpath</code></td>
+            <td><strong>显示</strong>目前指向的 <code>.minecraft</code> 路径</td>
+            <td><code>mcgit -sp</code></td>
+        </tr>
+        <tr>
+            <td><code>-sv</code></td>
+            <td><code>--showversion</code></td>
+            <td><strong>显示</strong>目前指向的版本号</td>
+            <td><code>mcgit -sv</code></td>
+        </tr>
+        <tr>
+            <td><code>-hb</code></td>
+            <td><code>--hotbarbackup</code></td>
+            <td><strong>备份</strong>当前版本的 hotbar 文件</td>
+            <td><code>mcgit -hb</code></td>
+        </tr>
+        <tr>
+            <td><code>-hs</code></td>
+            <td><code>--hotbarstore</code></td>
+            <td><strong>恢复</strong>当前版本的 hotbar 文件</td>
+            <td><code>mcgit -hs</code></td>
+        </tr>
+        <tr>
+            <td><code>-c</code></td>
+            <td><code>--copy</code></td>
+            <td>将指定位置的 hotbar 文件<strong>复制</strong>到游戏目录</td>
+            <td><code>mcgit -c "D:\..."</code></td>
+        </tr>
+        <tr>
+            <td><code>-r</code></td>
+            <td><code>--restore</code></td>
+            <td>将备份文件<strong>恢复</strong>到指定游戏目录</td>
+            <td><code>mcgit -r "D:\..."</code></td>
+        </tr>
+    </table>
+
+    <h2>&gt; 注意事项</h2>
+    <div class="warning">
+        <ul style="margin-left: 20px; margin-top: 10px;">
+            <li>文件位置：<br>
+                <code>
+                    空文件夹/<br>
+                    &nbsp;&nbsp;mcgit/<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;mcfig.exe<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;_internal/<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;...<br>
+                    &nbsp;&nbsp;save/   &lt;- 程序会在这里自动创建一个文件夹<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;...<br>
+                    &nbsp;&nbsp;config/<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;config.json   &lt;- 配置文件，同样也会自动创建
+                </code>
+            </li>
+            <li>路径格式：Windows 系统中建议使用双引号 <code>"</code> 包裹包含空格的文件路径。</li>
+            <li>首次运行：必须先运行一次带有 <code>-g</code> 和 <code>-s</code> 参数的命令来完成初始化配置。</li>
+            <li>文件覆盖：在进行恢复 (<code>-hs</code>, <code>-r</code>) 或复制 (<code>-c</code>) 操作时，若目标位置已存在同名文件，将被直接覆盖，请谨慎操作。</li>
+        </ul>
+    </div>
+
+    <h2>&gt; 许可证</h2>
+    <p>本项目采用 <strong>MIT许可证</strong>，可自由使用和修改。</p>
+
+    <div class="footer">
+        <p>Mcgit v1.0.0 | MIT许可证</p>
+        <p>By FeSo4a</p>
+        <div class="terminal-line" style="margin-top: 20px;">
+            <span class="prompt">C:\&gt;</span>
+            <span class="command">exit</span>
+            <span class="cursor"></span>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 添加终端打字机效果
+    document.addEventListener('DOMContentLoaded', function () {
+        const cursor = document.querySelector('.cursor');
+
+        // 随机闪烁增强效果
+        setInterval(() => {
+            cursor.style.opacity = Math.random() > 0.5 ? '1' : '0';
+        }, 500);
+
+        // 添加随机噪点效果
+        const container = document.querySelector('.container');
+        setInterval(() => {
+            if (Math.random() > 0.95) {
+                container.style.boxShadow = '0 0 25px rgba(0, 255, 0, 0.5)';
+                setTimeout(() => {
+                    container.style.boxShadow = '0 0 20px rgba(0, 255, 0, 0.3)';
+                }, 100);
+            }
+        }, 3000);
+    });
+</script>
+</body>
+</html>
