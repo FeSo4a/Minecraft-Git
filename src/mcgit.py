@@ -51,7 +51,7 @@ def main() -> None:
         print(f'当前的保存文件数量上限为：\n{max_backup}')
     # 显示保存文件列表
     if args.list:
-        show_all_nbt()
+        show_all_nbt(game_path, save_path, version)
 
     # 设置路径，版本，备份文件上限
     flag = False
